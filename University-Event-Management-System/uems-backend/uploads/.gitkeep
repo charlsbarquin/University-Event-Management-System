@@ -1,0 +1,2 @@
+# Run this command to create an empty .gitkeep file
+New-Item uploads/.gitkeep

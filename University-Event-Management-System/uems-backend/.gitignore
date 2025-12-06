@@ -1,0 +1,7 @@
+# See previous .gitignore content I provided earlier
+node_modules/
+.env
+npm-debug.log*
+.DS_Store
+uploads/*
+!uploads/.gitkeep
