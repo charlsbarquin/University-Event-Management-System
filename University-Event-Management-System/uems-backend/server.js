@@ -26,9 +26,51 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
-// ✅ FIXED: Disable helmet for development to avoid CORS issues
+// ✅ UPDATED FOR RENDER: CORS Configuration for production
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://uems-frontend.onrender.com',
+      'https://uems-frontend-*.onrender.com',
+      'http://localhost:3000',
+      'http://localhost:5173',
+      process.env.CLIENT_URL
+    ].filter(Boolean);
+    
+    if (allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin.includes('*')) {
+        const pattern = allowedOrigin.replace('*', '.*');
+        return new RegExp(pattern).test(origin);
+      }
+      return origin === allowedOrigin;
+    })) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400 // 24 hours
+};
+
+app.use(cors(corsOptions));
+
+// ✅ CRITICAL FIX: Handle OPTIONS preflight for ALL routes
+app.options('*', cors(corsOptions));
+
+// Security headers for production
 if (process.env.NODE_ENV === 'production') {
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false // You can configure this later
+  }));
 } else {
   app.use(helmet({
     crossOriginResourcePolicy: false,
@@ -36,50 +78,44 @@ if (process.env.NODE_ENV === 'production') {
   }));
 }
 
-// ✅ CRITICAL FIX: CORS Configuration - Simple for development
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Type', 'Authorization']
-}));
-
-// ✅ CRITICAL FIX: Handle OPTIONS preflight for ALL routes
-app.options('*', cors());
-
 // Body Parsing Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ FIXED: Static files with proper CORS
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// ✅ UPDATED: Static files with proper CORS and cache control
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, filePath) => {
+    // Cache static files for 1 year in production
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    }
+  }
+}));
 
-// ✅ FIXED: Rate Limiting - Development-friendly settings
+// ✅ UPDATED: Rate Limiting optimized for Render
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 60000, // 1 minute
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // 1000 requests per minute
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes default
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 100 requests per windowMs
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // ✅ ADD CORS headers to rate limit responses
-  handler: (req, res, next, options) => {
-    res.status(options.statusCode).json(options.message);
-  },
-  // ✅ Skip rate limiting for certain requests in development
   skip: (req, res) => {
-    // Skip for static files
+    // Skip rate limiting for health checks and static files
+    if (req.path === '/api/health' || req.path === '/') return true;
     if (req.path.startsWith('/uploads/')) return true;
-    // Skip for health checks
-    if (req.path === '/api/health') return true;
+    if (req.path === '/test-cors') return true;
     return false;
+  },
+  keyGenerator: (req) => {
+    // Use IP + user agent for better rate limiting
+    return req.ip + '-' + (req.headers['user-agent'] || '');
   }
 });
 
-// ✅ FIXED: Apply rate limiting ONLY to API routes
+// Apply rate limiting to API routes only
 app.use('/api/', limiter);
 
 // Test endpoint for images
@@ -104,33 +140,45 @@ app.get('/api/health', (req, res) => {
     message: 'UEMS Backend is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    rateLimit: {
-      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 60000,
-      max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000
-    }
+    version: '1.0.0',
+    nodeVersion: process.version,
+    platform: process.platform
   });
 });
 
-// CORS test endpoint
+// Enhanced CORS test endpoint
 app.get('/test-cors', (req, res) => {
   res.json({
     success: true,
-    message: 'CORS test endpoint',
-    headers: req.headers
+    message: 'CORS test endpoint - Accessible from allowed origins',
+    allowedOrigins: [
+      'https://uems-frontend.onrender.com',
+      'http://localhost:3000',
+      'http://localhost:5173'
+    ],
+    yourOrigin: req.headers.origin || 'No origin header',
+    timestamp: new Date().toISOString()
   });
 });
 
-// Debug route
+// Enhanced debug route
 app.get('/debug', (req, res) => {
   res.json({
     success: true,
     message: 'Debug endpoint',
-    environment: process.env.NODE_ENV,
+    environment: process.env.NODE_ENV || 'development',
     clientUrl: process.env.CLIENT_URL,
-    corsOrigin: process.env.CLIENT_URL || 'http://localhost:3000',
+    corsOrigin: process.env.CORS_ORIGIN || 'https://uems-frontend.onrender.com',
+    port: process.env.PORT || 5000,
+    mongodb: process.env.MONGODB_URI ? 'Configured' : 'Not configured',
     rateLimit: {
-      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS),
-      max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS)
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
+      max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100
+    },
+    headers: {
+      origin: req.headers.origin,
+      host: req.headers.host,
+      'user-agent': req.headers['user-agent']
     }
   });
 });
@@ -141,7 +189,13 @@ app.get('/', (req, res) => {
     success: true,
     message: 'University Event Management System (UEMS) Backend API is running!',
     version: '1.0.0',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    documentation: {
+      health: '/api/health',
+      debug: '/debug',
+      corsTest: '/test-cors',
+      apiBase: '/api'
+    }
   });
 });
 
@@ -158,14 +212,36 @@ app.use('/api/upload', uploadRoutes);
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.originalUrl} not found`
+    message: `Route ${req.originalUrl} not found`,
+    availableRoutes: [
+      '/api/health',
+      '/api/auth/*',
+      '/api/events/*',
+      '/api/events/proposals/*',
+      '/api/admin/*',
+      '/api/notifications/*',
+      '/api/share/*',
+      '/api/upload/*'
+    ]
   });
 });
 
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('❌ Server Error:', err.message);
-  console.error('Stack:', err.stack);
+  
+  // Don't log stack in production for security
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('Stack:', err.stack);
+  }
+  
+  // CORS errors
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      success: false,
+      message: 'CORS Error: Your origin is not allowed to access this resource.'
+    });
+  }
   
   // Rate limit errors
   if (err.statusCode === 429) {
@@ -179,7 +255,7 @@ app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({
       success: false,
-      message: 'File too large. Please upload a smaller file.'
+      message: 'File too large. Maximum file size is 10MB.'
     });
   }
   
@@ -191,20 +267,34 @@ app.use((err, req, res, next) => {
   }
 
   // Default error
-  res.status(err.statusCode || 500).json({
+  const statusCode = err.statusCode || 500;
+  const response = {
     success: false,
-    message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
+    message: process.env.NODE_ENV === 'production' 
+      ? 'Internal Server Error' 
+      : err.message || 'Internal Server Error'
+  };
+  
+  // Add stack trace only in development
+  if (process.env.NODE_ENV !== 'production' && err.stack) {
+    response.stack = err.stack;
+  }
+  
+  res.status(statusCode).json(response);
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 UEMS Backend Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Client URL: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
-  console.log(`⚠️  Rate limiting: ${parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000} requests/minute`);
-  console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔍 Debug: http://localhost:${PORT}/debug`);
+const PORT = process.env.PORT || 10000; // Render uses port 10000 by default
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`
+🚀 UEMS Backend Server running!
+📊 Environment: ${process.env.NODE_ENV || 'development'}
+🌐 Port: ${PORT}
+🔗 CORS Origins: ${process.env.CORS_ORIGIN || 'https://uems-frontend.onrender.com'}
+📦 MongoDB: ${process.env.MONGODB_URI ? 'Connected' : 'Not configured'}
+⚠️  Rate limiting: ${parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100} requests/${parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000}ms
+🔍 Health check: http://localhost:${PORT}/api/health
+🔍 Debug: http://localhost:${PORT}/debug
+📝 API Documentation: http://localhost:${PORT}/
+  `);
 });
