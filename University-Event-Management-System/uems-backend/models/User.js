@@ -14,7 +14,29 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Email is required'],
     unique: true,
     lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    validate: {
+      validator: function(email) {
+        // Strict email validation: 
+        // 1. Standard emails: ranolarod@gmail.com
+        // 2. Bicol University emails: ranolarod@bicol-u.edu.ph
+        // 3. Allows other educational domains too
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(email)) {
+          return false;
+        }
+        
+        // Additional check for Bicol University format
+        const buEmailRegex = /^[a-zA-Z0-9._%+-]+@bicol-u\.edu\.ph$/;
+        const standardEmailRegex = /^[a-zA-Z0-9._%+-]+@(gmail|yahoo|outlook|hotmail|icloud|protonmail)\.(com|net|org|edu)$/i;
+        const eduEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(edu|ac)\.[a-zA-Z]{2,}$/i;
+        
+        return buEmailRegex.test(email) || 
+               standardEmailRegex.test(email) || 
+               eduEmailRegex.test(email) ||
+               /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.edu\.[a-zA-Z]{2,}$/i.test(email);
+      },
+      message: 'Please enter a valid email address. Accepted formats: name@gmail.com, name@bicol-u.edu.ph, or other educational emails.'
+    }
   },
   password: {
     type: String,

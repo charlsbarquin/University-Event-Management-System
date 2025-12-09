@@ -2,6 +2,18 @@
 
 A comprehensive web-based platform designed to streamline event management within universities. This system facilitates the creation, approval, and management of university events while providing role-based access for students, organizers, and administrators.
 
+## 🌟 Live Deployment
+
+### **Live Application URLs:**
+- **🌐 Frontend (User Interface):** [https://uems-frontend.onrender.com](https://uems-frontend.onrender.com)
+- **🔧 Backend API:** [https://uems-backend-epbe.onrender.com/api](https://uems-backend-epbe.onrender.com/api)
+- **📊 Health Check:** [https://uems-backend-epbe.onrender.com/api/health](https://uems-backend-epbe.onrender.com/api/health)
+
+### **Demo Credentials:**
+- **Student Role:** student@example.com / password123
+- **Organizer Role:** organizer@example.com / password123
+- **Admin Role:** admin@example.com / password123
+
 ## 🚀 Features
 
 ### User Management
@@ -33,12 +45,12 @@ A comprehensive web-based platform designed to streamline event management withi
 ## 🛠 Tech Stack
 
 ### Backend
-- **Runtime**: Node.js (v16+)
+- **Runtime**: Node.js (v18.x) on Render
 - **Framework**: Express.js
-- **Database**: MongoDB with Mongoose ODM
+- **Database**: MongoDB Atlas (Cloud)
 - **Authentication**: JWT (JSON Web Tokens)
 - **Security**: bcryptjs for password hashing, Helmet for security headers
-- **File Upload**: Multer for multipart/form-data handling
+- **File Upload**: Multer with memory storage for production
 - **Rate Limiting**: express-rate-limit for API protection
 - **CORS**: Configurable Cross-Origin Resource Sharing
 
@@ -47,11 +59,19 @@ A comprehensive web-based platform designed to streamline event management withi
 - **Routing**: React Router DOM v6
 - **Styling**: Tailwind CSS with PostCSS
 - **State Management**: React Context API
-- **HTTP Client**: Axios
+- **HTTP Client**: Axios with interceptors
 - **Form Handling**: React Hook Form
 - **UI Components**: Headless UI, Lucide React icons
 - **Notifications**: React Hot Toast
 - **Data Fetching**: TanStack Query (React Query)
+- **Minification**: Terser for production builds
+
+### Deployment & Hosting
+- **Cloud Platform**: Render.com (Web Service + Static Site)
+- **Database Hosting**: MongoDB Atlas (Free Tier)
+- **CDN**: Render CDN for static assets
+- **SSL/TLS**: Automated HTTPS via Render
+- **Monitoring**: Render dashboard with health checks
 
 ### Development Tools
 - **Version Control**: Git
@@ -65,7 +85,7 @@ A comprehensive web-based platform designed to streamline event management withi
 
 Before running this application, make sure you have the following installed:
 
-- **Node.js** (v16 or higher)
+- **Node.js** (v18 or higher)
 - **MongoDB** (local installation or cloud instance like MongoDB Atlas)
 - **npm** or **yarn** package manager
 - **Git** for version control
@@ -74,8 +94,8 @@ Before running this application, make sure you have the following installed:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/university-event-management-system.git
-cd university-event-management-system
+git clone https://github.com/charlsbarquin/University-Event-Management-System.git
+cd University-Event-Management-System/University-Event-Management-System
 ```
 
 ### 2. Backend Setup
@@ -122,6 +142,27 @@ Create a `.env` file in the `uems-frontend` directory:
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+### Production Environment (Render)
+These are configured in Render dashboard:
+
+**Backend Service:**
+```env
+NODE_ENV=production
+PORT=10000
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/uems_database
+JWT_SECRET=production-jwt-secret-key
+JWT_EXPIRE=7d
+CORS_ORIGIN=https://uems-frontend.onrender.com
+CLIENT_URL=https://uems-frontend.onrender.com
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+```
+
+**Frontend Static Site:**
+```env
+VITE_API_BASE_URL=https://uems-backend-epbe.onrender.com/api
 ```
 
 ## 🚀 Running the Application

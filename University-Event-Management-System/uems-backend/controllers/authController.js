@@ -5,6 +5,24 @@ const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
+// Helper function for email validation (same as model validation)
+const validateEmail = (email) => {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return false;
+  }
+  
+  // Additional check for Bicol University format
+  const buEmailRegex = /^[a-zA-Z0-9._%+-]+@bicol-u\.edu\.ph$/;
+  const standardEmailRegex = /^[a-zA-Z0-9._%+-]+@(gmail|yahoo|outlook|hotmail|icloud|protonmail)\.(com|net|org|edu)$/i;
+  const eduEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(edu|ac)\.[a-zA-Z]{2,}$/i;
+  
+  return buEmailRegex.test(email) || 
+         standardEmailRegex.test(email) || 
+         eduEmailRegex.test(email) ||
+         /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.edu\.[a-zA-Z]{2,}$/i.test(email);
+};
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -14,9 +32,17 @@ exports.register = async (req, res) => {
 
     console.log('🔍 Registration attempt:', { studentId, email });
 
+    // Validate email format
+    if (!validateEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid email address. Accepted formats: name@gmail.com, name@bicol-u.edu.ph, or other educational emails.'
+      });
+    }
+
     // Check if user exists
     const existingUser = await User.findOne({
-      $or: [{ studentId }, { email }]
+      $or: [{ studentId }, { email: email.toLowerCase() }]
     });
 
     if (existingUser) {
@@ -29,11 +55,11 @@ exports.register = async (req, res) => {
     // Create user (role defaults to 'student')
     const user = await User.create({
       studentId,
-      email,
+      email: email.toLowerCase(),
       password,
       firstName,
       lastName,
-      gender: gender || 'prefer-not-to-say' // Optional gender
+      gender: gender || 'prefer-not-to-say'
     });
 
     // Generate token
@@ -50,13 +76,24 @@ exports.register = async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          gender: user.gender // Include gender in response
+          gender: user.gender
         },
         token
       }
     });
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Handle Mongoose validation errors specifically
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', '),
+        error: 'Validation Error'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Server error during registration',
@@ -124,7 +161,7 @@ exports.login = async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          gender: user.gender, // Include gender
+          gender: user.gender,
           profilePicture: user.profilePicture
         },
         token

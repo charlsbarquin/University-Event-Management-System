@@ -8,6 +8,7 @@ import FileUploadModal from '../../components/upload/FileUploadModal';
 import MediaGallery from '../../components/upload/MediaGallery';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Users, FileText, Bell, Plus, Clock, CheckCircle, X, Eye, Trash2, Send, ChevronRight, Sparkles, Zap, BarChart3, Image, Users as UsersIcon } from 'lucide-react';
+import { getImageUrl } from '../../services/api'; // ✅ ADD THIS IMPORT
 
 const OrganizerDashboard = () => {
   const [myEvents, setMyEvents] = useState([]);
@@ -594,7 +595,7 @@ const EventsTab = ({
             {event.bannerImage && (
               <div className="ml-4">
                 <img 
-                  src={`http://localhost:5000${event.bannerImage}?t=${Date.now()}`}
+                  src={`${getImageUrl(event.bannerImage)}?t=${Date.now()}`} // ✅ FIXED: Using imported function
                   alt="Event banner"
                   className="w-32 h-20 object-cover rounded"
                   onError={(e) => {
@@ -1790,19 +1791,6 @@ const MediaLibraryTab = ({ events, onDeleteProposal, onDeleteEvent }) => {
     setLightboxMedia(null);
   };
 
-  const getImageUrl = (url) => {
-    if (!url) return '';
-    
-    let imageUrl = url;
-    if (url.startsWith('/uploads/')) {
-      imageUrl = `http://localhost:5000${url}`;
-    } else if (!url.startsWith('http')) {
-      imageUrl = `http://localhost:5000/uploads/event-images/${url}`;
-    }
-    
-    return `${imageUrl}?t=${Date.now()}`;
-  };
-
   const handleDeleteMedia = (eventId, eventTitle, eventStatus) => {
     if (eventStatus === 'approved') {
       // For approved events, use the new deleteEvent function
@@ -1842,7 +1830,7 @@ const MediaLibraryTab = ({ events, onDeleteProposal, onDeleteEvent }) => {
                 onClick={() => openLightbox(media)}
               >
                 <img 
-                  src={getImageUrl(media.url)}
+                  src={`${getImageUrl(media.url)}?t=${Date.now()}`} // ✅ FIXED: Using imported function
                   alt={media.caption || media.filename}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                   onError={(e) => {
@@ -1939,7 +1927,7 @@ const MediaLibraryTab = ({ events, onDeleteProposal, onDeleteEvent }) => {
             {/* Media display */}
             <div className="flex items-center justify-center h-full">
               <img
-                src={getImageUrl(lightboxMedia.url)}
+                src={`${getImageUrl(lightboxMedia.url)}?t=${Date.now()}`} // ✅ FIXED: Using imported function
                 alt={lightboxMedia.caption || lightboxMedia.filename}
                 className="max-w-full max-h-[80vh] object-contain"
               />

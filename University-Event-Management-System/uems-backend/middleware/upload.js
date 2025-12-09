@@ -15,6 +15,7 @@ const ensureDirectories = () => {
   directories.forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
+      console.log(`📁 Created directory: ${dir}`);
     }
   });
 };
@@ -22,22 +23,21 @@ const ensureDirectories = () => {
 // Ensure directories exist on startup
 ensureDirectories();
 
-// ✅ UPDATED FOR RENDER: Use memory storage for production
+// ✅ FIXED: Always use DISK storage for localhost development
 const getStorage = (folder) => {
-  if (process.env.NODE_ENV === 'production') {
-    // Use memory storage for Render (filesystem is ephemeral)
-    console.log(`📁 Using memory storage for ${folder} (production mode)`);
-    return multer.memoryStorage();
-  }
+  console.log(`📁 Using DISK storage for ${folder}`);
   
-  // Use disk storage for development
   return multer.diskStorage({
     destination: (req, file, cb) => {
       const uploadPath = path.join(__dirname, '../uploads', folder);
+      
       // Ensure directory exists
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true });
+        console.log(`📁 Created upload directory: ${uploadPath}`);
       }
+      
+      console.log(`📁 Saving to: ${uploadPath}`);
       cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
@@ -45,9 +45,10 @@ const getStorage = (folder) => {
       const eventId = req.params.id || 'unknown';
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       const ext = path.extname(file.originalname);
+      const filename = `event-${eventId}-${uniqueSuffix}${ext}`;
       
-      // Format: event-[id]-[timestamp]-[random].ext
-      cb(null, `event-${eventId}-${uniqueSuffix}${ext}`);
+      console.log(`📁 Generated filename: ${filename} for ${file.originalname}`);
+      cb(null, filename);
     }
   });
 };
@@ -74,9 +75,11 @@ const fileFilter = (req, file, cb) => {
   const isVideo = allowedVideoTypes.includes(file.mimetype);
 
   if (isImage || isVideo) {
+    console.log(`✅ File accepted: ${file.originalname} (${file.mimetype})`);
     cb(null, true);
   } else {
     const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes].join(', ');
+    console.log(`❌ File rejected: ${file.originalname} (${file.mimetype})`);
     cb(new Error(`Invalid file type: ${file.mimetype}. Allowed types: ${allowedTypes}`), false);
   }
 };
@@ -89,7 +92,7 @@ const uploadConfig = {
   fileFilter: fileFilter
 };
 
-// Export multiple upload configurations
+// Export multiple upload configurations - REMOVED eventMedia which doesn't exist!
 const upload = {
   // For event banners (single file)
   banner: multer({
@@ -107,88 +110,45 @@ const upload = {
   videos: multer({
     ...uploadConfig,
     storage: getStorage('event-videos')
-  }),
-
-  // Combined for all event media types
-  eventMedia: multer({
-    ...uploadConfig,
-    storage: multer.memoryStorage() // Always memory storage for combined
   })
 };
 
-// ✅ ADDED: Helper function to handle file saving based on environment
-const saveUploadedFile = (fileBuffer, originalName, folder) => {
-  if (process.env.NODE_ENV === 'production') {
-    // In production (Render), return file buffer for cloud storage
-    // You should integrate cloud storage here (S3, Cloudinary, etc.)
-    console.log(`⚠️  File upload in production mode - Consider implementing cloud storage for: ${originalName}`);
-    return {
-      buffer: fileBuffer,
-      originalname: originalName,
-      size: fileBuffer.length,
-      uploadedAt: new Date().toISOString(),
-      storage: 'memory'
-    };
-  }
-  
-  // In development, save to disk
-  const uploadPath = path.join(__dirname, '../uploads', folder);
-  if (!fs.existsSync(uploadPath)) {
-    fs.mkdirSync(uploadPath, { recursive: true });
-  }
-  
-  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-  const ext = path.extname(originalName);
-  const filename = `file-${uniqueSuffix}${ext}`;
-  const filepath = path.join(uploadPath, filename);
-  
-  fs.writeFileSync(filepath, fileBuffer);
-  
-  return {
-    path: filepath,
-    filename: filename,
-    url: `/uploads/${folder}/${filename}`,
-    size: fileBuffer.length,
-    uploadedAt: new Date().toISOString(),
-    storage: 'disk'
-  };
-};
-
-// ✅ ADDED: Cleanup function for temporary files
-const cleanupTempFiles = () => {
-  if (process.env.NODE_ENV === 'production') return;
-  
-  const baseDir = path.join(__dirname, '../uploads');
-  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-  const now = Date.now();
-  
-  const cleanupDirectory = (dir) => {
-    if (!fs.existsSync(dir)) return;
-    
-    const files = fs.readdirSync(dir);
-    files.forEach(file => {
-      const filePath = path.join(dir, file);
-      const stats = fs.statSync(filePath);
+// ✅ CRITICAL FIX: Add eventMedia that properly routes files to correct folders
+upload.eventMedia = multer({
+  ...uploadConfig,
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      let folder = 'event-images'; // default
       
-      if (now - stats.mtimeMs > maxAge) {
-        fs.unlinkSync(filePath);
-        console.log(`🧹 Cleaned up old file: ${filePath}`);
+      if (file.fieldname === 'banner') {
+        folder = 'event-banners';
+      } else if (file.fieldname === 'images') {
+        folder = 'event-images';
+      } else if (file.fieldname === 'videos') {
+        folder = 'event-videos';
       }
-    });
-  };
-  
-  // Clean up all upload directories
-  ['event-banners', 'event-images', 'event-videos'].forEach(folder => {
-    cleanupDirectory(path.join(baseDir, folder));
-  });
-};
+      
+      const uploadPath = path.join(__dirname, '../uploads', folder);
+      
+      // Ensure directory exists
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+        console.log(`📁 Created upload directory: ${uploadPath}`);
+      }
+      
+      console.log(`📁 eventMedia: Saving ${file.fieldname} to ${uploadPath}`);
+      cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+      const eventId = req.params.id || 'unknown';
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      const filename = `event-${eventId}-${uniqueSuffix}${ext}`;
+      
+      console.log(`📁 eventMedia: Generated filename: ${filename} for ${file.fieldname}`);
+      cb(null, filename);
+    }
+  })
+});
 
-// Run cleanup on startup
-cleanupTempFiles();
-
-// Export the helper functions as well
-module.exports = {
-  ...upload,
-  saveUploadedFile,
-  cleanupTempFiles
-};
+module.exports = upload;

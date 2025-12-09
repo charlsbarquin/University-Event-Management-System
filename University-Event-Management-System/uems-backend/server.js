@@ -169,7 +169,7 @@ app.get('/debug', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     clientUrl: process.env.CLIENT_URL,
     corsOrigin: process.env.CORS_ORIGIN || 'https://uems-frontend.onrender.com',
-    port: process.env.PORT || 5000,
+    port: process.env.PORT || 5000, // ✅ 5000
     mongodb: process.env.MONGODB_URI ? 'Configured' : 'Not configured',
     rateLimit: {
       windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
@@ -283,15 +283,16 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json(response);
 });
 
-// Start server
-const PORT = process.env.PORT || 10000; // Render uses port 10000 by default
+// ✅ FIXED: Back to port 5000
+const PORT = process.env.PORT || 5000; // ✅ 5000
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 🚀 UEMS Backend Server running!
 📊 Environment: ${process.env.NODE_ENV || 'development'}
 🌐 Port: ${PORT}
-🔗 CORS Origins: ${process.env.CORS_ORIGIN || 'https://uems-frontend.onrender.com'}
+🔗 CORS Origins: ${process.env.CLIENT_URL || 'http://localhost:3000'}
 📦 MongoDB: ${process.env.MONGODB_URI ? 'Connected' : 'Not configured'}
+🔐 JWT Expiry: ${process.env.JWT_EXPIRE || '30d'}
 ⚠️  Rate limiting: ${parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100} requests/${parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000}ms
 🔍 Health check: http://localhost:${PORT}/api/health
 🔍 Debug: http://localhost:${PORT}/debug

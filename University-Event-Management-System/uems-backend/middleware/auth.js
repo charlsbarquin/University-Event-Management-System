@@ -21,7 +21,20 @@ const auth = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    req.user = null;  // ✅ Allow public access
+    // ✅ Don't log JWT errors for expired tokens - just treat as no user
+    if (error.name === 'TokenExpiredError') {
+      // Token expired, but don't clear it - let frontend handle refresh
+      req.user = null;
+      return next();
+    } else if (error.name === 'JsonWebTokenError') {
+      // Invalid token
+      req.user = null;
+      return next();
+    }
+    
+    // Other errors
+    console.error('Auth middleware error:', error);
+    req.user = null;
     next();
   }
 };

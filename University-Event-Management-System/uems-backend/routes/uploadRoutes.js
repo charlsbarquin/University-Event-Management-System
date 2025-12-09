@@ -5,6 +5,19 @@ const { auth } = require('../middleware/auth');
 const { eventOwnership } = require('../middleware/eventOwnership');
 const upload = require('../middleware/upload');
 
+// Debug middleware
+const debugUpload = (req, res, next) => {
+  console.log('🔍 Upload route hit:', {
+    method: req.method,
+    url: req.url,
+    params: req.params,
+    body: req.body,
+    files: req.files ? Object.keys(req.files) : 'none',
+    user: req.user ? req.user._id : 'no user'
+  });
+  next();
+};
+
 // @desc    Upload event media (banner/images/videos) - ADMIN + EVENT OWNER ONLY
 // @route   POST /api/upload/events/:id/media
 // @access  Private (Admin + Event Owner)
@@ -12,6 +25,7 @@ router.post(
   '/events/:id/media',
   auth,
   eventOwnership,
+  debugUpload,
   upload.eventMedia.fields([
     { name: 'banner', maxCount: 1 },
     { name: 'images', maxCount: 10 },
@@ -38,23 +52,6 @@ router.get(
   auth,
   eventOwnership,
   uploadController.getEventMedia
-);
-
-// TEST ROUTE - Remove after confirming everything works
-router.delete(
-  '/test/events/:id/media/:mediaType/:filename',
-  auth, // Only auth, no eventOwnership
-  (req, res) => {
-    console.log('🔍 Test delete route hit!', {
-      params: req.params,
-      user: req.user
-    });
-    res.json({ 
-      success: true, 
-      message: 'Test route works!',
-      data: { params: req.params, user: req.user._id }
-    });
-  }
 );
 
 module.exports = router;

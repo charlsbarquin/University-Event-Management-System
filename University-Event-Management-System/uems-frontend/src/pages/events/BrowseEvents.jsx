@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { eventsService } from '../../services/events';
+import { getImageUrl } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { Search, Filter, Calendar, MapPin, Users, RefreshCw, ChevronDown, Sparkles, TrendingUp } from 'lucide-react';
 
@@ -286,8 +287,8 @@ const EventCard = ({ event }) => {
       {/* Event Banner */}
       <div className="h-40 bg-gradient-to-br from-gray-200 to-gray-300 relative overflow-hidden">
         {event.bannerImage ? (
-          <img 
-            src={`http://localhost:5000${event.bannerImage}`} 
+          <img
+            src={getImageUrl(event.bannerImage)}
             alt={event.title}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />

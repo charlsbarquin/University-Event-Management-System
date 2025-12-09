@@ -55,8 +55,12 @@ const AuthProvider = ({ children }) => {
             });
           }
         } else {
-          // Clear only on authentication errors
-          if (result.message?.includes('401') || result.message?.includes('unauthorized')) {
+          // ✅ FIX: Don't clear tokens on 401 from getCurrentUser
+          // The token might be expired, but we keep it anyway
+          // User stays "logged in" with localStorage data
+          // Only clear if it's a specific auth error
+          if (result.message?.includes('session expired') || result.message?.includes('please login')) {
+            // Only clear if server explicitly tells us to
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             setUser(null);
@@ -64,13 +68,16 @@ const AuthProvider = ({ children }) => {
               duration: 4000,
             });
           }
+          // Otherwise, keep the user logged in with stored data
         }
       } else {
+        // No token, clear user
         localStorage.removeItem('user');
         setUser(null);
       }
     } catch (error) {
       console.error('Auth check error:', error);
+      // ✅ Don't clear user on network errors
     } finally {
       setLoading(false);
       setAuthChecked(true);
@@ -79,6 +86,17 @@ const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuthStatus();
+    
+    // ✅ Optional: Set up periodic token refresh (every 10 minutes)
+    const refreshInterval = setInterval(() => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        // Silently refresh auth status
+        checkAuthStatus().catch(console.error);
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+    
+    return () => clearInterval(refreshInterval);
   }, [checkAuthStatus]);
 
   const login = async (credentials) => {

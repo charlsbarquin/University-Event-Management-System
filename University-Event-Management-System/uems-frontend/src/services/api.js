@@ -222,6 +222,48 @@ export const uploadFile = async (url, formData, onUploadProgress) => {
   });
 };
 
+// ✅ FIXED: Helper function for image URLs (HANDLES ALL FORMATS)
+export const getImageUrl = (filename) => {
+  if (!filename) {
+    console.log('❌ getImageUrl: No filename provided');
+    return null;
+  }
+  
+  console.log('🔍 getImageUrl input:', filename);
+  
+  // If it's already a full URL, return as is
+  if (filename.startsWith('http')) {
+    console.log('✅ Already full URL:', filename);
+    return filename;
+  }
+  
+  // Handle paths that start with /uploads/ (from database)
+  if (filename.startsWith('/uploads/')) {
+    const pathWithoutSlash = filename.startsWith('/') ? filename.substring(1) : filename;
+    const fullUrl = `http://localhost:5000/${pathWithoutSlash}`;
+    console.log('✅ Generated from /uploads/ path:', fullUrl);
+    return fullUrl;
+  }
+  
+  // Handle just filenames (legacy format)
+  let folder = 'event-images'; // default
+  
+  if (filename.includes('banner') || filename.includes('event-banner')) {
+    folder = 'event-banners';
+  } else if (filename.includes('video') || filename.includes('event-video')) {
+    folder = 'event-videos';
+  } else if (filename.includes('media')) {
+    folder = 'event-media'; // if you have this folder
+  }
+  
+  // Extract just the filename from any path
+  const justFilename = filename.split('/').pop();
+  const fullUrl = `http://localhost:5000/uploads/${folder}/${justFilename}`;
+  
+  console.log('✅ Generated from filename:', fullUrl);
+  return fullUrl;
+};
+
 // Health check function
 export const checkApiHealth = async () => {
   try {

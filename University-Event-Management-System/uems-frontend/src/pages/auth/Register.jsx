@@ -5,6 +5,26 @@ import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { UserPlus, User, Mail, Lock, Hash, Sparkles, Eye, EyeOff, Users, Calendar, Shield, ArrowRight, CheckCircle, Zap } from 'lucide-react';
 
+// Email validation helper function
+const validateEmail = (email) => {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return false;
+  }
+  
+  // Bicol University email
+  const buEmailRegex = /^[a-zA-Z0-9._%+-]+@bicol-u\.edu\.ph$/;
+  // Standard email providers
+  const standardEmailRegex = /^[a-zA-Z0-9._%+-]+@(gmail|yahoo|outlook|hotmail|icloud|protonmail)\.(com|net|org|edu)$/i;
+  // Educational emails
+  const eduEmailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(edu|ac)\.[a-zA-Z]{2,}$/i;
+  
+  return buEmailRegex.test(email) || 
+         standardEmailRegex.test(email) || 
+         eduEmailRegex.test(email) ||
+         /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.edu\.[a-zA-Z]{2,}$/i.test(email);
+};
+
 const Register = () => {
   const [formData, setFormData] = useState({
     studentId: '',
@@ -17,6 +37,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const [emailError, setEmailError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -42,16 +63,44 @@ const Register = () => {
     };
   }, [formData.password]);
 
-  const handleChange = (e) => {
-    const { name, type, checked, value } = e.target;
+  // Validate email on change
+  const handleEmailChange = (e) => {
+    const email = e.target.value;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value
+      email: email
     });
+    
+    // Only show error if user has typed something
+    if (email && !validateEmail(email)) {
+      setEmailError('Please enter a valid email (e.g., name@gmail.com or name@bicol-u.edu.ph)');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, type, checked, value } = e.target;
+    
+    if (name === 'email') {
+      handleEmailChange(e);
+    } else {
+      setFormData({
+        ...formData,
+        [name]: type === 'checkbox' ? checked : value
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate email before submitting
+    if (!validateEmail(formData.email)) {
+      toast.error('Please enter a valid email address (e.g., name@gmail.com or name@bicol-u.edu.ph)');
+      setEmailError('Invalid email format');
+      return;
+    }
     
     // Basic validation
     if (formData.password.length < 6) {
@@ -277,15 +326,28 @@ const Register = () => {
                     onFocus={() => setFocusedField('email')}
                     onBlur={() => setFocusedField(null)}
                     className={`block w-full pl-9 pr-2.5 py-2 border-2 rounded-md focus:outline-none transition-all duration-300 text-xs font-medium placeholder-gray-400 ${
-                      focusedField === 'email'
+                      focusedField === 'email' && !emailError
                         ? 'border-[#0A2FF1] bg-blue-50/50 shadow-lg shadow-blue-200/50'
+                        : emailError
+                        ? 'border-red-300 bg-red-50/50 shadow-lg shadow-red-200/50'
                         : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
                     }`}
-                    placeholder="student@university.edu"
+                    placeholder="student@bicol-u.edu.ph or name@gmail.com"
                     value={formData.email}
                     onChange={handleChange}
                   />
                 </div>
+                {emailError && (
+                  <p className="text-xs text-red-600 font-medium flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    {emailError}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500">
+                  Accepted formats: name@gmail.com, name@bicol-u.edu.ph, or other educational emails
+                </p>
               </div>
 
               {/* Gender Dropdown */}
@@ -401,7 +463,7 @@ const Register = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || emailError}
                 className="w-full py-2 px-3 bg-gradient-to-r from-[#0A2FF1] via-[#0818A8] to-[#0a23d8] text-white font-semibold text-xs rounded-md hover:shadow-lg hover:shadow-blue-400/40 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-3 focus:ring-blue-300/50"
               >
                 {loading ? (
