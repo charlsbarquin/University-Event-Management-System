@@ -222,7 +222,7 @@ export const uploadFile = async (url, formData, onUploadProgress) => {
   });
 };
 
-// ✅ FIXED: Helper function for image URLs (HANDLES ALL FORMATS)
+// ✅ FIXED: Helper function for image URLs (HANDLES ALL FORMATS) - UPDATED FOR PRODUCTION
 export const getImageUrl = (filename) => {
   if (!filename) {
     console.log('❌ getImageUrl: No filename provided');
@@ -237,10 +237,15 @@ export const getImageUrl = (filename) => {
     return filename;
   }
   
+  // Get the base URL from environment (without /api suffix for static files)
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  // Remove /api from the end for static files
+  const BASE_URL = API_BASE_URL.replace(/\/api$/, '');
+  
   // Handle paths that start with /uploads/ (from database)
   if (filename.startsWith('/uploads/')) {
     const pathWithoutSlash = filename.startsWith('/') ? filename.substring(1) : filename;
-    const fullUrl = `http://localhost:5000/${pathWithoutSlash}`;
+    const fullUrl = `${BASE_URL}/${pathWithoutSlash}`;
     console.log('✅ Generated from /uploads/ path:', fullUrl);
     return fullUrl;
   }
@@ -253,12 +258,12 @@ export const getImageUrl = (filename) => {
   } else if (filename.includes('video') || filename.includes('event-video')) {
     folder = 'event-videos';
   } else if (filename.includes('media')) {
-    folder = 'event-media'; // if you have this folder
+    folder = 'event-media';
   }
   
   // Extract just the filename from any path
   const justFilename = filename.split('/').pop();
-  const fullUrl = `http://localhost:5000/uploads/${folder}/${justFilename}`;
+  const fullUrl = `${BASE_URL}/uploads/${folder}/${justFilename}`;
   
   console.log('✅ Generated from filename:', fullUrl);
   return fullUrl;

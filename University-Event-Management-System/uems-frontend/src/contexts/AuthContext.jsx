@@ -37,7 +37,7 @@ const AuthProvider = ({ children }) => {
         }
       }
       
-      // Verify with server if we have a token
+      // Only verify with server if we have a token
       if (token) {
         const result = await authService.getCurrentUser();
         
@@ -55,20 +55,16 @@ const AuthProvider = ({ children }) => {
             });
           }
         } else {
-          // ✅ FIX: Don't clear tokens on 401 from getCurrentUser
-          // The token might be expired, but we keep it anyway
-          // User stays "logged in" with localStorage data
-          // Only clear if it's a specific auth error
-          if (result.message?.includes('session expired') || result.message?.includes('please login')) {
-            // Only clear if server explicitly tells us to
+          // Token might be expired, but keep localStorage data
+          // Only clear if server explicitly says token is invalid
+          if (result.message?.includes('Invalid token') || 
+              result.message?.includes('No token') ||
+              result.status === 401) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             setUser(null);
-            toast.error('Session expired. Please login again.', {
-              duration: 4000,
-            });
           }
-          // Otherwise, keep the user logged in with stored data
+          // Otherwise, keep user logged in with stored data
         }
       } else {
         // No token, clear user
@@ -77,7 +73,7 @@ const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Auth check error:', error);
-      // ✅ Don't clear user on network errors
+      // Network error - keep user logged in with stored data
     } finally {
       setLoading(false);
       setAuthChecked(true);

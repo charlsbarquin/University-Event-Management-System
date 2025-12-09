@@ -6,7 +6,7 @@ const auth = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
-      req.user = null;  // ✅ Allow public access
+      req.user = null;
       return next();
     }
 
@@ -14,25 +14,20 @@ const auth = async (req, res, next) => {
     const user = await User.findById(decoded.userId).select('-password');
     
     if (!user) {
-      req.user = null;  // ✅ Allow public access
+      req.user = null;
       return next();
     }
 
     req.user = user;
     next();
   } catch (error) {
-    // ✅ Don't log JWT errors for expired tokens - just treat as no user
-    if (error.name === 'TokenExpiredError') {
-      // Token expired, but don't clear it - let frontend handle refresh
-      req.user = null;
-      return next();
-    } else if (error.name === 'JsonWebTokenError') {
-      // Invalid token
+    // ✅ CRITICAL: For ALL JWT errors, just set req.user = null and continue
+    // Don't throw errors that would break the auth check
+    if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
       req.user = null;
       return next();
     }
     
-    // Other errors
     console.error('Auth middleware error:', error);
     req.user = null;
     next();

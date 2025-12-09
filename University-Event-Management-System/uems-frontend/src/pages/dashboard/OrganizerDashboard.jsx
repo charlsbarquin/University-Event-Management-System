@@ -8,7 +8,7 @@ import FileUploadModal from '../../components/upload/FileUploadModal';
 import MediaGallery from '../../components/upload/MediaGallery';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Users, FileText, Bell, Plus, Clock, CheckCircle, X, Eye, Trash2, Send, ChevronRight, Sparkles, Zap, BarChart3, Image, Users as UsersIcon } from 'lucide-react';
-import { getImageUrl } from '../../services/api'; // ✅ ADD THIS IMPORT
+import { getImageUrl } from '../../services/api';
 
 const OrganizerDashboard = () => {
   const [myEvents, setMyEvents] = useState([]);
