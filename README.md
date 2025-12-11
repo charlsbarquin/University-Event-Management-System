@@ -10,9 +10,9 @@ A comprehensive web-based platform designed to streamline event management withi
 - **📊 Health Check:** [https://uems-backend-epbe.onrender.com/api/health](https://uems-backend-epbe.onrender.com/api/health)
 
 ### **Demo Credentials:**
-- **Student Role:** student@example.com / password123
-- **Organizer Role:** organizer@example.com / password123
-- **Admin Role:** admin@example.com / password123
+- **Student Role:** STU001 / password123
+- **Organizer Role:** ORG001 / password123
+- **Admin Role:** ADMIN001 / admin123
 
 ## 🚀 Features
 
